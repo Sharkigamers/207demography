@@ -1,0 +1,191 @@
+#!/usr/bin/env python3
+
+##
+## EPITECH PROJECT, 2020
+## 207demography
+## File description:
+## 207demography
+##
+
+import sys
+import argparse
+from math import sqrt
+
+def divisor():
+    return pow(10,6)
+class Demography:
+    def __init__(self, file, args):
+        self.args = args
+        self.countries = {}
+        self.dates = []
+        self.totalCountries = {}
+        self.parseCSV(file)
+        if (len(self.countries) != len(args)):
+            exit(84)
+
+    def fillCountries(self, tab):
+        intArray = []
+        for i in range (2, len(tab)):
+            try:
+                intArray.append(int(tab[i]))
+            except:
+                exit(84)
+        self.countries[tab[1]] = {tab[0]: intArray}
+
+    def parseCSV(self, file):
+        totalTab = []
+        try:
+            file = open(file)
+            fileContent = file.readlines()
+        except:
+            exit(84)
+
+        for line in fileContent:
+            splitedLines = line.split(";")
+            if ("Country Code" in splitedLines):
+                self.dates = [int(numeric_string) for numeric_string in splitedLines[2:]]
+            if (splitedLines[1] in self.args):
+                self.fillCountries(splitedLines)
+        for key, value in self.countries.items():
+            for value in list(value.values())[0]:
+                totalTab.append(0)
+            break
+        for key, value in self.countries.items():
+            i = 0
+            for value in list(value.values())[0]:
+                totalTab[i] += value
+                i += 1
+        self.totalCountries["TTC"] = {"totalCountries": totalTab}
+
+    def calculateAB(self, average, datesAverage, fit):
+        dividendSum = 0
+        divisorSum = 0
+
+        for key, value in self.totalCountries.items():
+            for i in range (0, len(list(value.values())[0])):
+                if (fit == 1):
+                    dist = self.dates[i] - datesAverage
+                    dividendSum += (list(value.values())[0][i] - average) * dist
+                elif (fit == 2):
+                    dist = list(value.values())[0][i] - average
+                    dividendSum += (self.dates[i] - datesAverage) * dist
+                divisorSum += pow(dist, 2)
+        if (divisorSum == 0):
+            return 0
+        else:
+            a = dividendSum / divisorSum
+            if (fit == 1):
+                b = average - a * datesAverage
+                return a, b
+            elif (fit == 2):
+                b = datesAverage - a * average
+                return a, b
+            else:
+                exit(84)
+
+    def calculateRootMeanSquareDeviation(self, fit):
+        dividendSum = 0
+        divisorSum = len(self.dates)
+
+        for i in range (0, len(self.dates)):
+            sumEveryDates = 0
+            for key, value in self.totalCountries.items():
+                sumEveryDates += (list(value.values())[0][i])
+            if (fit == 1):
+                dividendSum += pow(self.aFromFirstFit * self.dates[i] + self.bFromFirstFit - sumEveryDates, 2)
+            elif (fit == 2):
+                try:
+                    dividendSum += pow((self.dates[i] - self.bFromSecondFit) / self.aFromSecondFit - sumEveryDates, 2)
+                except:
+                    dividendSum += 0
+        if (divisorSum == 0):
+            return 0
+        else:
+            return sqrt(dividendSum / divisorSum)
+
+    def calculatePrediction(self, fit):
+        if (fit == 1):
+            return self.aFromFirstFit * 2050 + self.bFromFirstFit
+        elif (fit == 2):
+            if (self.aFromSecondFit == 0):
+                return 0
+            else:
+                return (2050 - self.bFromSecondFit) / self.aFromSecondFit
+
+    def average(self):
+        average = 0
+        maxLengthLine = 0
+
+        for key, value in self.totalCountries.items():
+            average += sum(list(value.values())[0])
+            maxLengthLine = len(list(value.values())[0])
+            if (maxLengthLine != len(self.dates)):
+                exit(84)
+        if (maxLengthLine == 0):
+            return 0
+        else:
+            return average / maxLengthLine
+
+    def calculation(self):
+        try:
+            datesAverage = sum(self.dates) / len(self.dates)
+        except:
+            datesAverage = 0
+        average = self.average()
+        (self.aFromFirstFit, self.bFromFirstFit) = self.calculateAB(average, datesAverage, 1)
+        self.rootMeanSquareDeviationFromFirstFit = self.calculateRootMeanSquareDeviation(1)
+        self.predictionFromFirstFit = self.calculatePrediction(1)
+        (self.aFromSecondFit, self.bFromSecondFit) = self.calculateAB(average, datesAverage, 2)
+        self.rootMeanSquareDeviationFromSecondFit = self.calculateRootMeanSquareDeviation(2)
+        self.predictionFromSecondFit = self.calculatePrediction(2)
+
+    def display(self):
+        lengthCountries = len(self.countries)
+        i = 0
+
+        print("Country: ", end='')
+        for key, value in self.countries.items():
+            if (i + 1 != lengthCountries):
+                print(str(list(value.keys())).strip("['']"), end=", ")
+            else:
+                print(str(list(value.keys())).strip("['']"))
+            i += 1
+        print("Fit1")
+        print("\tY = {:.2f} X - {:.2f}".format(self.aFromFirstFit / divisor(), abs(self.bFromFirstFit / divisor())))
+        print("\tRoot-mean-square deviation: {:.2f}".format(self.rootMeanSquareDeviationFromFirstFit / divisor()))
+        print("\tPopulation in 2050: {:.2f}".format(self.predictionFromFirstFit / divisor()))
+        print("Fit2")
+        print("\tX = {:.2f} Y + {:.2f}".format(self.aFromSecondFit * divisor(), abs(self.bFromSecondFit)))
+        print("\tRoot-mean-square deviation: {:.2f}".format(self.rootMeanSquareDeviationFromSecondFit / divisor()))
+        print("\tPopulation in 2050: {:.2f}".format(self.predictionFromSecondFit / divisor()))
+        try:
+            print("Correlation: {:.4f}".format(self.rootMeanSquareDeviationFromFirstFit / self.rootMeanSquareDeviationFromSecondFit))
+        except:
+            print("Correlation: {:.4f}".format(0))
+
+
+def verifyArgs(argsLength : int):
+    for i in range (1, argsLength):
+        if (sys.argv[i].isupper() == False or
+        any(map(str.isdigit, sys.argv[i]))):
+            exit(84)
+
+def help():
+    try:
+        file = open("HELP.txt", "r")
+        print(file.read())
+    except:
+        print("Error: Missing help file")
+
+if __name__ == "__main__":
+    argsLength = len(sys.argv)
+    if (argsLength == 1):
+        exit(84)
+    if (argsLength == 2 and sys.argv[1] == "-h"):
+        help()
+    else:
+        verifyArgs(argsLength)
+        demography = Demography("207demography_data.csv", sys.argv[1:])
+        demography.calculation()
+        demography.display()
+    exit(0)
